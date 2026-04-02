@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Finance Dashboard</title>
+
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+h1 {
+  margin: 0;
+}
+
+.cards {
+  display: flex;
+  gap: 15px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.card {
+  flex: 1;
+  padding: 20px;
+  background: white;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  transition: 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card h3 {
+  margin: 5px 0;
+  color: #555;
+}
+
+.card p {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.controls input, .controls select {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+}
+
+#form-section {
+  background: white;
+  padding: 15px;
+  border-radius: 15px;
+  margin: 20px 0;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+input, select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin: 5px;
+}
+
+button {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: none;
+  background: #667eea;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #5a67d8;
+}
+
+.delete {
+  background: #e53e3e;
+}
+
+.edit {
+  background: #f6ad55;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  background: white;
+  margin: 10px 0;
+  padding: 15px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+h3 {
+  color: white;
+}
+
+#insights {
+  background: white;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+@media(max-width: 600px) {
+  .cards {
+    flex-direction: column;
+  }
+}
+</style>
+
+</head>
+<body>
+
+<header>
+  <h1>💰 Finance Dashboard</h1>
+
+  <select id="role">
+    <option value="viewer">Viewer</option>
+    <option value="admin">Admin</option>
+  </select>
+</header>
+
+<section class="cards">
+  <div class="card">
+    <h3>Balance</h3>
+    <p>₹<span id="balance">0</span></p>
+  </div>
+  <div class="card">
+    <h3>Income</h3>
+    <p>₹<span id="income">0</span></p>
+  </div>
+  <div class="card">
+    <h3>Expense</h3>
+    <p>₹<span id="expense">0</span></p>
+  </div>
+</section>
+
+<section class="controls">
+  <input type="text" id="search" placeholder="Search...">
+  <select id="filter">
+    <option value="all">All</option>
+    <option value="income">Income</option>
+    <option value="expense">Expense</option>
+  </select>
+</section>
+
+<section id="form-section">
+  <h3>Add / Edit Transaction</h3>
+  <input type="hidden" id="editId">
+  <input type="text" id="title" placeholder="Title">
+  <input type="number" id="amount" placeholder="Amount">
+  <select id="type">
+    <option value="income">Income</option>
+    <option value="expense">Expense</option>
+  </select>
+  <input type="text" id="category" placeholder="Category">
+  <button onclick="saveTransaction()">➕ Save</button>
+</section>
+
+<h3>Transactions</h3>
+<ul id="list"></ul>
+
+<h3>Insights</h3>
+<p id="insights"></p>
+
+<script>
+let transactions = JSON.parse(localStorage.getItem("data")) || [];
+
+function saveData() {
+  localStorage.setItem("data", JSON.stringify(transactions));
+}
+
+function saveTransaction() {
+  let id = document.getElementById("editId").value;
+  let title = document.getElementById("title").value;
+  let amount = document.getElementById("amount").value;
+  let type = document.getElementById("type").value;
+  let category = document.getElementById("category").value;
+
+  if (!title || !amount) {
+    alert("Fill all fields");
+    return;
+  }
+
+  if (id) {
+    transactions = transactions.map(t =>
+      t.id == id ? { ...t, title, amount:+amount, type, category } : t
+    );
+  } else {
+    transactions.push({
+      id: Date.now(),
+      title,
+      amount: +amount,
+      type,
+      category
+    });
+    alert("Transaction Added ✅");
+  }
+
+  clearForm();
+  saveData();
+  updateUI();
+}
+
+function editTx(id) {
+  let t = transactions.find(t => t.id === id);
+  document.getElementById("editId").value = t.id;
+  document.getElementById("title").value = t.title;
+  document.getElementById("amount").value = t.amount;
+  document.getElementById("type").value = t.type;
+  document.getElementById("category").value = t.category;
+}
+
+function deleteTx(id) {
+  transactions = transactions.filter(t => t.id !== id);
+  saveData();
+  updateUI();
+}
+
+function clearForm() {
+  document.getElementById("editId").value = "";
+  document.getElementById("title").value = "";
+  document.getElementById("amount").value = "";
+  document.getElementById("category").value = "";
+}
+
+function updateUI() {
+  let list = document.getElementById("list");
+  list.innerHTML = "";
+
+  let search = document.getElementById("search").value.toLowerCase();
+  let filter = document.getElementById("filter").value;
+
+  let income = 0, expense = 0;
+
+  transactions
+    .filter(t =>
+      (filter === "all" || t.type === filter) &&
+      t.title.toLowerCase().includes(search)
+    )
+    .forEach(t => {
+      if (t.type === "income") income += t.amount;
+      else expense += t.amount;
+
+      let li = document.createElement("li");
+
+      li.innerHTML = `
+        <div>
+          <b>${t.title}</b> - ₹${t.amount} (${t.category})
+        </div>
+        <div>
+          <button class="edit" onclick="editTx(${t.id})">Edit</button>
+          <button class="delete" onclick="deleteTx(${t.id})">Delete</button>
+        </div>
+      `;
+
+      list.appendChild(li);
+    });
+
+  document.getElementById("income").innerText = income;
+  document.getElementById("expense").innerText = expense;
+  document.getElementById("balance").innerText = income - expense;
+
+  showInsights();
+}
+
+function showInsights() {
+  let max = 0;
+  let category = "";
+
+  transactions.forEach(t => {
+    if (t.type === "expense" && t.amount > max) {
+      max = t.amount;
+      category = t.category;
+    }
+  });
+
+  document.getElementById("insights").innerText =
+    max ? `Highest spending: ₹${max} on ${category}` : "No data available";
+}
+
+document.getElementById("role").addEventListener("change", (e) => {
+  let form = document.getElementById("form-section");
+
+  if (e.target.value === "viewer") {
+    form.style.display = "none";
+  } else {
+    form.style.display = "block";
+  }
+});
+
+document.getElementById("search").addEventListener("input", updateUI);
+document.getElementById("filter").addEventListener("change", updateUI);
+
+updateUI();
+</script>
+
+</body>
+</html>
